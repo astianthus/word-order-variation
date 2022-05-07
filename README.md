@@ -29,4 +29,4 @@ Three others relate to the analysis performed:
 
 The diagram produced with `python3 analysis.py corpora.txt .. -p -h`:
 
-![Distributions](distributions.png)
+![Distributions](heatmap.png)
