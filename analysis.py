@@ -1,37 +1,60 @@
 # Script for extracting word order distributions from CONLLU files
-import os 
-from tabulate import tabulate
+
 import sys
+import random
+import pandas as pd
+import seaborn as sns
+import matplotlib.pyplot as plt
+
+pd.set_option('display.max_rows', None)
+
+print_dist    = '-d' in sys.argv
+print_ex      = '-e' in sys.argv
+plot_heatmap  = '-h' in sys.argv
+make_datafile = '-f' in sys.argv
+
+use_aux       = '-x' in sys.argv
+use_iobj      = '-i' in sys.argv
+only_sov_p    = '-p' in sys.argv
+
+sov_perms = ['SOV', 'OSV', 'VSO', 'VOS', 'SVO', 'OVS']
 
 def main():
-    #bygger om word-orders.txt varje gång programmet körs. 
-    #kanske onödigt, men då kommer åtmistone correlation.py alltid hänga med på förändringar
-    if os.path.exists("word-orders.txt"):
-        os.remove("word-orders.txt")
-    wo = open ("word-orders.txt", "w" )
-    if len(sys.argv) == 1:
-        print('Add an argument for the corpus collection file')
+    if len(sys.argv) < 3:
+        print('Add an argument for the corpus collection file, and a path prefix.')
         return
-    table = []
+    if only_sov_p and (use_aux or use_iobj):
+        print('-p is incompatible with -x and -i.')
+        return
+    if plot_heatmap and not only_sov_p:
+        print('Heatmap is not yet implemented for full distributions.')
+        return
+    langs = []
+    results = []
     with open(sys.argv[1]) as lang_paths:
         for lang_path in lang_paths:
-            language, path = lang_path.split()
-            #Nu är return-värdet för analyse_corpus aningen lägre. så det krävs lite meck med det
-            analysis = analyse_corpus(language, path) 
-            table.append([language] + analysis[:2])
-            wo.write(str(language) + ': ' + str(analysis[-1]) +'\n')
+            lang, path = lang_path.split()
+            langs.append(lang)
+            results.append(analyse_corpus(lang, sys.argv[2] + path))
+    if plot_heatmap:
+        table = []
+        for freq in results:
+            table.append([(freq[o] if o in freq else 0) for o in sov_perms])
+        data = pd.DataFrame(table, columns = sov_perms, index = langs)
+        sns.clustermap(data, yticklabels = True, col_cluster = False)
+        plt.show()
+    if make_datafile:
+        file = open('distributions.txt', 'w')
+        for lang, result in zip(langs, results):
+            file.write(lang + ' ' + str(result) + '\n')
+        file.close()
 
-    table.sort(key = lambda x: x[2], reverse = True)
-    print(tabulate(table,
-        headers = ['Language', 'Sentences', 'SV/S', 'OV/O'],
-        floatfmt = '.4f'
-    ))
-    wo.close()
 def analyse_corpus(language, path):
-    print('Analysing', language) 
-     
-    word_orders = {}
-    with open(path, encoding='utf8') as f:
+    print('Analysing', language, end = '. ')
+    sys.stdout.flush()
+    order_count = {}
+    examples = {}
+    with open(path) as f:
         sentence = []
         for line in f:
             if line.strip() != '':
@@ -40,25 +63,26 @@ def analyse_corpus(language, path):
                 data, text = parse(sentence)
                 sentence = []
                 result = orders_in_sentence(data)
-                for o in result:
-                    if o not in word_orders:
-                        word_orders[o] = 0
-                    word_orders[o] += 1
-    word_orders = [(word_orders[o], o) for o in word_orders]
-    word_orders.sort(reverse = True)
-
-
-    def proportion(l_feature, l_sample):
-        feature = sum(n for (n, o) in filter(l_feature, word_orders))
-        sample = sum(n for (n, o) in filter(l_sample, word_orders))
-        return feature / sample
-
-    return [
-        sum(n for (n, o) in word_orders),
-        proportion(lambda x: 'S' in x[1].split('V')[0], lambda x: 'S' in x[1]),
-        proportion(lambda x: 'O' in x[1].split('V')[0], lambda x: 'O' in x[1]),
-        word_orders #vill ha med word_orders, det är vad jag vill ha in word-orders.txt
-        ]
+                for o, ex in result:
+                    if only_sov_p and not o in sov_perms:
+                        continue
+                    if o not in order_count:
+                        order_count[o] = 0
+                        examples[o] = []
+                    order_count[o] += 1
+                    if print_ex:
+                        examples[o].append(ex)
+    total = sum(order_count.values())
+    print('Found', total, 'clauses.')
+    orders_desc = sorted(order_count.keys(), key = lambda o: order_count[o], reverse = True)
+    if print_dist or print_ex:
+        for o in orders_desc:
+            print(o + ': ' + str(order_count[o]))
+            if print_ex:
+                exs = random.sample(examples[o], min(5, len(examples[o])))
+                for i in range(len(exs)):
+                    print(str(i + 1) + '.', exs[i])
+    return {order: count / total for order, count in order_count.items()}
 
 def parse(sentence):
     text = list(filter(lambda t: t[0] == '#' and 'text' in t, sentence))
@@ -74,6 +98,7 @@ def parse(sentence):
         except BaseException as e:
             print('Error at', t)
             print(e)
+        deprel = deprel.split(':')[0]
         data[id] = {'form': form, 'lemma': lemma, 'upos': upos, 'xpos': xpos, 'feats': feats, 'head': head, 'deprel': deprel, 'deps': deps, 'misc': misc}
     return data, text
 
@@ -83,7 +108,7 @@ def orders_in_sentence(data):
     for id in data.keys():
         if data[id]['upos'] == 'VERB':
             verb_ids.append(id)
-    orders = []
+    result = []
     for v_id in verb_ids:
         l = [(v_id, 'V')]
         for id in data.keys():
@@ -92,12 +117,16 @@ def orders_in_sentence(data):
                     l.append((id, 'S'))
                 if data[id]['deprel'] == 'obj':
                     l.append((id, 'O'))
-                # if data[id]['deprel'] == 'iobj': ## jag vill ignorera dessa
-                #     l.append((id, 'I'))
-                # if data[id]['deprel'] == 'aux':
-                #     l.append((id, 'X'))
-        orders.append(''.join([letter for (id, letter) in sorted(l)]))
-    return orders
+                if use_iobj and data[id]['deprel'] == 'iobj':
+                    l.append((id, 'I'))
+                if use_aux and data[id]['deprel'] == 'aux':
+                    l.append((id, 'X'))
+        order = ''.join([letter for (id, letter) in sorted(l)])
+        before = sorted(filter(lambda id: id < v_id, data.keys()))
+        after = sorted(filter(lambda id: id > v_id, data.keys()))
+        text = ' '.join(data[id]['form'] for id in before) + ' [' + data[v_id]['form'] + '] ' + ' '.join(data[id]['form'] for id in after)
+        result.append((order, text))
+    return result
 
 if __name__ == '__main__':
     main()
