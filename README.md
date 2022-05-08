@@ -5,10 +5,10 @@
 To run the script, Python 3 is required, as is a copy of the [Universal Dependencies](https://universaldependencies.org/) database.
 
 ```
-python3 analysis.py corpora.txt
+python3 analysis.py corpora.txt .
 ```
 
-This performs some basic syntactic analysis on the CONLLU files listed in `corpora.txt` (which for now needs to be modified manually to account for where the the database is stored). For each corpus, all verbs are identified, and for each verb (V) its direct dependencies are identified. By default, only subjects (S) and direct objects (O) are considered.
+This performs some basic syntactic analysis on the CONLLU files listed in `corpora.txt`, with paths prefixed by `.` (if the database is locally stored elsewhere a different prefix may be used, e.g. `..`). For each corpus, all verbs are identified, and for each verb (V) its direct dependencies are identified. By default, only subjects (S) and direct objects (O) are considered.
 
 ## Command line options
 
@@ -27,6 +27,6 @@ Three others relate to the analysis performed:
 
 ## Result
 
-The diagram produced with `python3 analysis.py corpora.txt .. -p -h`:
+The diagram produced with `python3 analysis.py corpora.txt . -p -h`:
 
 ![Distributions](heatmap.png)
