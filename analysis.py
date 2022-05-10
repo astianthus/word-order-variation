@@ -2,6 +2,7 @@
 
 import sys
 import random
+import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
@@ -12,6 +13,7 @@ print_dist    = '-d' in sys.argv
 print_ex      = '-e' in sys.argv
 plot_heatmap  = '-h' in sys.argv
 make_datafile = '-f' in sys.argv
+make_cov_mat  = '-c' in sys.argv
 
 use_aux       = '-x' in sys.argv
 use_iobj      = '-i' in sys.argv
@@ -36,13 +38,16 @@ def main():
             lang, path = lang_path.split()
             langs.append(lang)
             results.append(analyse_corpus(lang, sys.argv[2] + path))
-    if plot_heatmap:
+    if plot_heatmap or make_cov_mat:
         table = []
         for freq in results:
             table.append([(freq[o] if o in freq else 0) for o in sov_perms])
-        data = pd.DataFrame(table, columns = sov_perms, index = langs)
-        sns.clustermap(data, yticklabels = True, col_cluster = False)
-        plt.show()
+        if plot_heatmap:
+            data = pd.DataFrame(table, columns = sov_perms, index = langs)
+            sns.clustermap(data, yticklabels = True, col_cluster = False)
+            plt.show()
+        if make_cov_mat:
+            print(np.cov(np.transpose(table)))
     if make_datafile:
         file = open('distributions.txt', 'w')
         for lang, result in zip(langs, results):
