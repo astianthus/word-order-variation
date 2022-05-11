@@ -47,7 +47,13 @@ def main():
             sns.clustermap(data, yticklabels = True, col_cluster = False)
             plt.show()
         if make_cov_mat:
-            print(np.cov(np.transpose(table)))
+            cov_mat = np.cov(np.transpose(table))
+            l = []
+            for p1, cov_row in zip(sov_perms, cov_mat):
+                for p2, cov in zip(sov_perms, cov_row):
+                    if p1 < p2:
+                        l.append((p1, p2, cov))
+            print(*sorted(l, key = lambda x: x[2]), sep = '\n')
     if make_datafile:
         file = open('distributions.txt', 'w')
         for lang, result in zip(langs, results):
