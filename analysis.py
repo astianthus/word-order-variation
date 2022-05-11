@@ -57,7 +57,7 @@ def main():
     if make_datafile:
         file = open('distributions.txt', 'w')
         for lang, result in zip(langs, results):
-            file.write(lang + ': ' + str(result) + '\n')
+            file.write(lang + ' ' + str(result) + '\n')
         file.close()
 
 def analyse_corpus(language, path):
