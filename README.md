@@ -2,7 +2,7 @@
 
 ## Basic execution
 
-To run the script, Python 3 is required, as is a copy of the [Universal Dependencies](https://universaldependencies.org/) database.
+To run the script, Python 3 is required, as is a copy of the [Universal Dependencies](https://universaldependencies.org/) database. We have used version 2.10 but `corpora.txt` may be adapted to any other version.
 
 ```
 python3 analysis.py corpora.txt .
@@ -12,12 +12,14 @@ This performs some basic syntactic analysis on the CONLLU files listed in `corpo
 
 ## Command line options
 
-The first command line argument after `analysis.py` must be a corpus collection file using the format of `corpora.txt`, and after that, a prefix for the paths in `corpora.txt` (e.g. `.` or `..`), but after that any of the following options may be specified. Four relate to the output:
+The first command line argument after `analysis.py` must be a corpus collection file using the format of `corpora.txt`, and after that, a prefix for the paths in `corpora.txt` (e.g. `.` or `..`), but after that any of the following options may be specified. Six relate to the output:
 
 - `-d`: prints the word order distribution for each analysed corpus.
 - `-e`: prints a random sample of (up to) 5 examples for each identified word order, for each analysed corpus.
 - `-h`: plots a clustered heatmap of the corpora's distributions over the most common word orders.
 - `-f`: creates or overwrites the file `distributions.txt` with all distributional data collected by the script.
+- `-l`: prints a LaTeX-compatible overview of the distributions found for each language.
+- `-c`: prints a matrix of the Pearson correlation coefficient for each pair of word orders, as well as a list of each word order pair sorted by their correlation.
 
 Three others relate to the analysis performed:
 

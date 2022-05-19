@@ -50,6 +50,7 @@ def main():
             plt.show()
         if make_corr_mat:
             corr_mat = np.corrcoef(np.transpose(table))
+            print(corr_mat)
             l = []
             for p1, corr_row in zip(sov_perms, corr_mat):
                 for p2, corr in zip(sov_perms, corr_row):
