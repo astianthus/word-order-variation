@@ -13,13 +13,13 @@ print_dist    = '-d' in sys.argv
 print_ex      = '-e' in sys.argv
 plot_heatmap  = '-h' in sys.argv
 make_datafile = '-f' in sys.argv
-make_cov_mat  = '-c' in sys.argv
+make_corr_mat = '-c' in sys.argv
 
 use_aux       = '-x' in sys.argv
 use_iobj      = '-i' in sys.argv
 only_sov_p    = '-p' in sys.argv
 
-sov_perms = ['SOV', 'OSV', 'VSO', 'VOS', 'SVO', 'OVS']
+sov_perms = ['SOV', 'OSV', 'SVO', 'OVS', 'VSO', 'VOS']
 
 def main():
     if len(sys.argv) < 3:
@@ -38,21 +38,21 @@ def main():
             lang, path = lang_path.split()
             langs.append(lang)
             results.append(analyse_corpus(lang, sys.argv[2] + path))
-    if plot_heatmap or make_cov_mat:
+    if plot_heatmap or make_corr_mat:
         table = []
         for freq in results:
             table.append([(freq[o] if o in freq else 0) for o in sov_perms])
         if plot_heatmap:
             data = pd.DataFrame(table, columns = sov_perms, index = langs)
-            sns.clustermap(data, yticklabels = True, col_cluster = False)
+            sns.clustermap(data, yticklabels = True, col_cluster = False, cmap = 'rocket_r')
             plt.show()
-        if make_cov_mat:
-            cov_mat = np.cov(np.transpose(table))
+        if make_corr_mat:
+            corr_mat = np.corrcoef(np.transpose(table))
             l = []
-            for p1, cov_row in zip(sov_perms, cov_mat):
-                for p2, cov in zip(sov_perms, cov_row):
+            for p1, corr_row in zip(sov_perms, corr_mat):
+                for p2, corr in zip(sov_perms, corr_row):
                     if p1 < p2:
-                        l.append((p1, p2, cov))
+                        l.append((p1, p2, corr))
             print(*sorted(l, key = lambda x: x[2]), sep = '\n')
     if make_datafile:
         file = open('distributions.txt', 'w')
@@ -109,7 +109,7 @@ def parse(sentence):
         except BaseException as e:
             print('Error at', t)
             print(e)
-        deprel = deprel.split(':')[0]
+        deprel = deprel.split(':')
         data[id] = {'form': form, 'lemma': lemma, 'upos': upos, 'xpos': xpos, 'feats': feats, 'head': head, 'deprel': deprel, 'deps': deps, 'misc': misc}
     return data, text
 
@@ -124,13 +124,13 @@ def orders_in_sentence(data):
         l = [(v_id, 'V')]
         for id in data.keys():
             if data[id]['head'] == v_id:
-                if data[id]['deprel'] == 'nsubj':
+                if 'nsubj' in data[id]['deprel'] or 'subj' in data[id]['deprel']:
                     l.append((id, 'S'))
-                if data[id]['deprel'] == 'obj':
+                if 'obj' in data[id]['deprel']:
                     l.append((id, 'O'))
-                if use_iobj and data[id]['deprel'] == 'iobj':
+                if use_iobj and 'iobj' in data[id]['deprel']:
                     l.append((id, 'I'))
-                if use_aux and data[id]['deprel'] == 'aux':
+                if use_aux and 'aux' in data[id]['deprel']:
                     l.append((id, 'X'))
         order = ''.join([letter for (id, letter) in sorted(l)])
         before = sorted(filter(lambda id: id < v_id, data.keys()))
