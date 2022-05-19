@@ -6,6 +6,7 @@ import numpy as np
 import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
+from tabulate import tabulate
 
 pd.set_option('display.max_rows', None)
 
@@ -13,6 +14,7 @@ print_dist    = '-d' in sys.argv
 print_ex      = '-e' in sys.argv
 plot_heatmap  = '-h' in sys.argv
 make_datafile = '-f' in sys.argv
+make_latex    = '-l' in sys.argv
 make_corr_mat = '-c' in sys.argv
 
 use_aux       = '-x' in sys.argv
@@ -38,7 +40,7 @@ def main():
             lang, path = lang_path.split()
             langs.append(lang)
             results.append(analyse_corpus(lang, sys.argv[2] + path))
-    if plot_heatmap or make_corr_mat:
+    if plot_heatmap or make_corr_mat or make_latex:
         table = []
         for freq in results:
             table.append([(freq[o] if o in freq else 0) for o in sov_perms])
@@ -54,6 +56,9 @@ def main():
                     if p1 < p2:
                         l.append((p1, p2, corr))
             print(*sorted(l, key = lambda x: x[2]), sep = '\n')
+        if make_latex:
+            langs_table = [[lang] + row for lang, row in zip(langs, table)]
+            print(tabulate(langs_table, [] + sov_perms, tablefmt = 'latex', floatfmt = '.4f').replace('0.0000', '      '))
     if make_datafile:
         file = open('distributions.txt', 'w')
         for lang, result in zip(langs, results):
